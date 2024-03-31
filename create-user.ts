@@ -91,12 +91,6 @@ async function basicInfo(roles: Role[]) {
             type: "input",
             default: "",
         },
-        {
-            name: "country",
-            message: "Enter country: ",
-            type: "input",
-            default: "",
-        },
     ]);
 
     return answers;
@@ -116,8 +110,8 @@ const ans = await inquirer.prompt({
     type: "confirm",
 });
 
-const askConfirmation = async () => {
-    console.log(chalk.underline.bold("User details"));
+const askConfirmation = async (branch?: string, classes?: string[]) => {
+    console.log(chalk.underline.bold("User Details"));
     console.log(chalk.bold("Name: ") + answers.name);
     console.log(chalk.bold("Phone number: ") + answers.phoneno);
     console.log(chalk.bold("Email: ") + answers.email);
@@ -129,7 +123,9 @@ const askConfirmation = async () => {
     console.log(chalk.bold("City: ") + answers.city);
     console.log(chalk.bold("Postcode: ") + answers.zipcode);
     console.log(chalk.bold("State: ") + answers.state);
-    console.log(chalk.bold("Country: ") + answers.country);
+
+    console.log(chalk.bold("Branch: ") + branch);
+    console.log(chalk.bold("Classes: ") + classes?.join(", "));
 
     const confirmation = await inquirer.prompt({
         name: "confirm",
@@ -139,7 +135,7 @@ const askConfirmation = async () => {
 
     if (!confirmation.confirm) {
         console.log("User creation cancelled.");
-        return;
+        process.exit(0);
     }
 
     return confirmation.confirm;
@@ -205,8 +201,6 @@ if (ans.isTeacher) {
         },
     });
 
-    console.log(branchAnswer);
-
     const branchID = branchAnswer.split(" - ")[0];
 
     const classes =
@@ -214,13 +208,35 @@ if (ans.isTeacher) {
             .find((branch) => branch.BranchID === branchID)
             ?.AGClasses.map((item) => item.ClassID) ?? [];
 
-    await askConfirmation();
+    await askConfirmation(branchAnswer, branches
+        .find((branch) => branch.BranchID === branchID)
+        ?.AGClasses.map((item) => item.ClassName) ?? []);
 
-    await updateDB(branchID, classes);
+    try {
+        await updateDB(branchID, classes);
+    } catch (error: any) {
+
+        if (error instanceof Error) {
+            console.error(error.message);
+        }
+
+        console.error(error);
+
+    }
 } else {
     await askConfirmation();
 
-    await updateDB();
+    try {
+        await updateDB();
+    } catch (error: any) {
+
+        if (error instanceof Error) {
+            console.error(error.message);
+        }
+
+        console.error(error);
+
+    }
 }
 
 // console.log(roles);
