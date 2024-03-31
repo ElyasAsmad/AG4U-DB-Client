@@ -1,0 +1,320 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Organization {
+  OrgID    Int        @id @default(autoincrement())
+  OrgName  String
+  Category Category[]
+}
+
+model Category {
+  CategoryID   String        @id @default(uuid())
+  CategoryName String
+  OrgID        Int
+  Organization Organization  @relation(fields: [OrgID], references: [OrgID])
+  Branch       Branch[]
+  Subcategory  Subcategory[]
+
+  Users Users[] @relation("AGStaffCategory")
+}
+
+model Subcategory {
+  SubcategoryID   String           @id @default(uuid())
+  SubcategoryName String
+  Category        Category[]
+  PortfolioAlbum  PortfolioAlbum[]
+  AGClasses       AGClasses[]
+}
+
+model Branch {
+  BranchID             String                 @id @default(uuid())
+  BranchName           String
+  // Location  String
+  CategoryID           String
+  Category             Category               @relation(fields: [CategoryID], references: [CategoryID])
+  AGClasses            AGClasses[]
+  // Fees       BranchPricing[]
+  Address              Address?               @relation(fields: [FAddressID], references: [AddressID])
+  FAddressID           String?                @unique
+  BranchManagerCheckIn BranchManagerCheckIn[]
+  Users                Users[]
+  
+}
+
+model Address {
+  AddressID String  @id @default(uuid())
+  Address1  String
+  Address2  String
+  PostCode  String
+  City      String
+  State     String
+  Branch    Branch?
+}
+
+model AGClasses {
+  ClassID    String     @id @default(uuid())
+  ClassName  String
+  ClassTimes Json
+  Students   Students[]
+  Branch     Branch?    @relation(fields: [FBranchID], references: [BranchID])
+  FBranchID  String?
+
+  Portfolio Portfolio[]
+
+  Teachers       Users[]
+  Subcategory    Subcategory?    @relation(fields: [FSubcategoryID], references: [SubcategoryID])
+  FSubcategoryID String?         @map("fSubcategoryID")
+  BranchPricing  BranchPricing[]
+}
+
+model Roles {
+  RoleID   String  @id @default(uuid())
+  RoleName String
+  Status   String
+  Users    Users[]
+}
+
+model Users {
+  UserID         String    @id @unique
+  FullName       String
+  MobileNumber   String    @unique
+  EmailAddress   String
+  Role           Roles[]
+  ICNo           String
+  StaffCategory  String?
+  Gender         String
+  DOB            DateTime
+  Address1       String
+  Address2       String?
+  ProfilePicture AGMedia?  @relation("ProfilePicture")
+  City           String
+  ZipCode        String
+  State          String
+  IsMigrated     Boolean   @default(false)
+  S_StartDate    DateTime?
+  S_EndDate      DateTime?
+  CreatedAt      DateTime  @default(now())
+  OldStatus      String?
+  Status         String
+  VehicleInfo    String
+
+  Branch               Branch?                @relation(fields: [branchBranchID], references: [BranchID])
+  AGStaffCategory      Category[]             @relation("AGStaffCategory")
+  AGClasses            AGClasses[]
+  Transactions         Transaction[]
+  Conversations        Conversations[]
+  Messages             Messages[]
+  Children             Students[]
+  UsersAuth            UsersAuth?
+  Token                Token[]
+  DailyLogs            DailyLogs[]
+  AGMedia              AGMedia[]              @relation("UploadedBy")
+  TPortfolio           Portfolio[]
+  BranchManagerCheckIn BranchManagerCheckIn[]
+  branchBranchID       String?
+}
+
+model BranchManagerCheckIn {
+  CheckInID  String    @id @default(uuid())
+  CheckInAt  DateTime  @default(now())
+  CheckOutAt DateTime?
+  FUserID    String
+  Users      Users     @relation(fields: [FUserID], references: [UserID])
+  FBranchID  String
+  Branch     Branch    @relation(fields: [FBranchID], references: [BranchID])
+}
+
+model Students {
+  StudentID        String   @id @default(uuid())
+  FullName         String
+  StudentIC        String
+  StudentCategory  String
+  Gender           String
+  Address          String
+  DOB              DateTime
+  EffectiveDate    DateTime
+  ExpiryDate       DateTime
+  PictureURL       AGMedia?
+  Citizenship      String
+  Immunization     String
+  Allergy          String
+  PickupPerson     String
+  EmergencyContact String
+  Status           String
+  UpdatedAt        DateTime @default(now())
+
+  // FOREIGN KEYS
+  Parents   Users[]
+  AGClasses AGClasses[]
+
+  DailyLogs DailyLogs[]
+  Portfolio Portfolio[]
+
+  TaggedInImages AGMedia[] @relation(name: "TaggedInImages")
+}
+
+model UsersAuth {
+  AuthID   String  @id @default(uuid())
+  UserID   String  @unique
+  Password String
+  FCMToken String?
+  Users    Users   @relation(fields: [UserID], references: [UserID])
+}
+
+model Token {
+  TokenID   String   @id @default(uuid())
+  UserID    String
+  Token     String
+  Type      String // refresh / access / reset / migration
+  ExpiresAt DateTime
+  IssuedAt  DateTime @default(now())
+  User      Users?   @relation(fields: [UserID], references: [UserID])
+}
+
+model DailyLogs {
+  DLID        String    @id @default(uuid())
+  Temperature Float?
+  Timestamp   DateTime  @default(now())
+  Medias      AGMedia[]
+
+  TimePosted DateTime? @default(now())
+
+  FDLTypeID     String        @unique
+  DailyLogsType DailyLogsType @relation(fields: [FDLTypeID], references: [DLTypeID])
+
+  FUserID    String
+  UploadedBy Users      @relation(fields: [FUserID], references: [UserID])
+  Students   Students[]
+  FStudentID String?
+}
+
+model DailyLogsType {
+  DLTypeID    String     @id @default(uuid())
+  Type        String
+  Description String
+  Content     Json
+  DailyLogs   DailyLogs?
+}
+
+model AGMedia {
+  MediaID           String          @id @default(uuid())
+  MediaType         String // images / videos
+  MediaURL          String
+  MediaKey          String
+  UploadedAt        DateTime        @default(now())
+  PortfolioAlbum    PortfolioAlbum?
+  FPortfolioAlbumID String?
+  Portfolio         Portfolio?      @relation(fields: [FPortfolioAlbumID], references: [PortfolioID])
+  MediaDescription  String?
+  MediaState        String          @default("PENDING")
+  TaggedStudents    Students[]      @relation(name: "TaggedInImages")
+
+  FUserID    String
+  UploadedBy Users  @relation(fields: [FUserID], references: [UserID], name: "UploadedBy")
+
+  FUserProfilePicID String? @unique
+  ProfilePicture    Users?  @relation(fields: [FUserProfilePicID], references: [UserID], name: "ProfilePicture")
+
+  FDLID     String?    @map("dailyLogsDLID")
+  DailyLogs DailyLogs? @relation(fields: [FDLID], references: [DLID])
+
+  FStudentID String?   @unique
+  Student    Students? @relation(fields: [FStudentID], references: [StudentID])
+}
+
+model PortfolioAlbum {
+  AlbumID          String @id @default(uuid())
+  AlbumName        String
+  AlbumDescription String
+
+  AlbumCoverMediaID   String?     @unique
+  FAlbumSubcategoryID String      @map("FAlbumSubcategoryID")
+  AlbumSubcategory    Subcategory @relation(fields: [FAlbumSubcategoryID], references: [SubcategoryID])
+  AlbumCover          AGMedia?    @relation(fields: [AlbumCoverMediaID], references: [MediaID])
+  AlbumDate           DateTime    @default(now())
+  Portfolio           Portfolio[]
+}
+
+model Portfolio {
+  PortfolioID    String          @id @default(uuid())
+  // Media          AGMedia         @relation(fields: [MediaID], references: [MediaID])
+  Medias         AGMedia[]
+  Description    String
+  Timestamp      DateTime        @default(now())
+  PortfolioAlbum PortfolioAlbum? @relation(fields: [AlbumID], references: [AlbumID])
+  AlbumID        String?
+  Teachers       Users?          @relation(fields: [FTeacherID], references: [UserID])
+  FTeacherID     String?
+  Students       Students[]
+
+  TaggedClasses AGClasses[]
+  FClassID      String?
+}
+
+model Conversations {
+  ConversationID String     @id @default(uuid())
+  Messages       Messages[]
+  Users          Users[]
+  ConversationState String @default("ACTIVE") // ACTIVE / CLOSED
+}
+
+model Messages {
+  MessageID        String         @id @default(uuid())
+  MessageContent   String // Must be in JSON
+  MessageReference String? // Must be in JSON 
+  MessageState    String          @default("DELIVERED") // DELIVERED / READ / PENDING
+  MessageClientID String?
+  Timestamp        DateTime       @default(now())
+  FUserID          String
+  Users            Users          @relation(fields: [FUserID], references: [UserID])
+  FConversationID  String
+  Conversations    Conversations? @relation(fields: [FConversationID], references: [ConversationID])
+}
+
+model Transaction {
+  RefNo           String   @id @unique
+  Name            String
+  Email           String
+  PhoneNumber     String
+  Desc            String
+  Type            String
+  Method          String
+  UniqueKey       String
+  InvoiceNo       String
+  Amount          Float
+  Status          String
+  CreatedDateTime DateTime @default(now())
+  PaymentLink     String
+  Users           Users?   @relation(fields: [FUserID], references: [UserID])
+  FUserID         String?  @map("FUserID")
+}
+
+model AccountDeleteRequest {
+  RequestID   String    @id @default(uuid())
+  UserID      String
+  Reason      String
+  Status      String
+  RequestedAt DateTime  @default(now())
+  DeletedAt   DateTime?
+}
+
+model BranchPricing {
+  PricingID   String   @id @default(uuid())
+  PricingType String // Monthly / Yearly
+  Pricing     Float // Amount
+  Status      String // Active / Inactive
+  CreatedAt   DateTime @default(now())
+  UpdatedAt   DateTime @default(now())
+
+  FClassID  String
+  AGClasses AGClasses @relation(fields: [FClassID], references: [ClassID])
+}
