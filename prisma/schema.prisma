@@ -47,7 +47,6 @@ model Branch {
   FAddressID           String?                @unique
   BranchManagerCheckIn BranchManagerCheckIn[]
   Users                Users[]
-  
 }
 
 model Address {
@@ -121,6 +120,8 @@ model Users {
   TPortfolio           Portfolio[]
   BranchManagerCheckIn BranchManagerCheckIn[]
   branchBranchID       String?
+  Invoice              Invoice[]
+  TransactionV2        TransactionV2[]
 }
 
 model BranchManagerCheckIn {
@@ -155,11 +156,16 @@ model Students {
   // FOREIGN KEYS
   Parents   Users[]
   AGClasses AGClasses[]
+  // Invoice   Invoice[]
 
   DailyLogs DailyLogs[]
   Portfolio Portfolio[]
 
-  TaggedInImages AGMedia[] @relation(name: "TaggedInImages")
+  Transactions Transaction[]
+
+  TaggedInImages AGMedia[]       @relation(name: "TaggedInImages")
+  SubInvoice     SubInvoice[]
+  TransactionV2  TransactionV2[]
 }
 
 model UsersAuth {
@@ -229,6 +235,8 @@ model AGMedia {
 
   FStudentID String?   @unique
   Student    Students? @relation(fields: [FStudentID], references: [StudentID])
+
+  BlurHash String?
 }
 
 model PortfolioAlbum {
@@ -261,41 +269,23 @@ model Portfolio {
 }
 
 model Conversations {
-  ConversationID String     @id @default(uuid())
-  Messages       Messages[]
-  Users          Users[]
-  ConversationState String @default("ACTIVE") // ACTIVE / CLOSED
+  ConversationID    String     @id @default(uuid())
+  Messages          Messages[]
+  Users             Users[]
+  ConversationState String     @default("ACTIVE") // ACTIVE / CLOSED
 }
 
 model Messages {
   MessageID        String         @id @default(uuid())
   MessageContent   String // Must be in JSON
   MessageReference String? // Must be in JSON 
-  MessageState    String          @default("DELIVERED") // DELIVERED / READ / PENDING
-  MessageClientID String?
+  MessageState     String         @default("DELIVERED") // DELIVERED / READ / PENDING
+  MessageClientID  String?
   Timestamp        DateTime       @default(now())
   FUserID          String
   Users            Users          @relation(fields: [FUserID], references: [UserID])
   FConversationID  String
   Conversations    Conversations? @relation(fields: [FConversationID], references: [ConversationID])
-}
-
-model Transaction {
-  RefNo           String   @id @unique
-  Name            String
-  Email           String
-  PhoneNumber     String
-  Desc            String
-  Type            String
-  Method          String
-  UniqueKey       String
-  InvoiceNo       String
-  Amount          Float
-  Status          String
-  CreatedDateTime DateTime @default(now())
-  PaymentLink     String
-  Users           Users?   @relation(fields: [FUserID], references: [UserID])
-  FUserID         String?  @map("FUserID")
 }
 
 model AccountDeleteRequest {
@@ -317,4 +307,94 @@ model BranchPricing {
 
   FClassID  String
   AGClasses AGClasses @relation(fields: [FClassID], references: [ClassID])
+}
+
+model Invoice {
+  InvoiceID   String       @id @default(uuid())
+  InvoiceNo   String
+  Description String
+  // Amount      Float
+  // Status      String       @default("PENDING") // PENDING / PAID / CANCELLED / REFUNDED / FAILED / EXPIRED / PARTIAL / OVERDUE / REFUND_REQUESTED
+  PaymentType String // Monthly / Yearly
+  IssuedAt    DateTime     @default(now())
+  DueAt       DateTime
+  // PaidAt      DateTime?
+  // RefundedAt  DateTime?
+  Users       Users[]
+  SubInvoice  SubInvoice[]
+
+  // Students    Students[]
+  Transaction   Transaction[] // 1 Invoice can have multiple transactions (either success / failed)
+  // Students          Students?     @relation(fields: [studentsStudentID], references: [StudentID])
+  // studentsStudentID String?
+  // Students          Students?     @relation(fields: [studentsStudentID], references: [StudentID])
+  // studentsStudentID String?
+  TransactionV2 TransactionV2[]
+}
+
+model SubInvoice {
+  SubinvoiceID               String         @id @default(uuid())
+  Amount                     Float
+  Status                     String         @default("PENDING")
+  Student                    Students       @relation(fields: [studentsStudentID], references: [StudentID])
+  studentsStudentID          String
+  Invoice                    Invoice?       @relation(fields: [invoiceInvoiceID], references: [InvoiceID])
+  invoiceInvoiceID           String?
+  // TransactionV2              TransactionV2? @relation(fields: [transactionV2TransactionID], references: [TransactionID])
+  // transactionV2TransactionID Int
+  TransactionV2              TransactionV2? @relation(fields: [transactionV2TransactionID], references: [TransactionID])
+  transactionV2TransactionID Int?
+}
+
+model Transaction {
+  TransactionID   Int      @id @default(autoincrement())
+  RefNo           String
+  Name            String
+  Email           String
+  PhoneNumber     String
+  Desc            String
+  Type            String
+  Method          String
+  UniqueKey       String
+  InvoiceNo       String
+  Amount          Float
+  Status          String
+  CreatedDateTime DateTime @default(now())
+  PaymentLink     String
+  StudentID       String?
+  AGInvoiceNo     String?  @unique
+
+  Students Students? @relation(fields: [StudentID], references: [StudentID])
+
+  Users   Users?  @relation(fields: [FUserID], references: [UserID])
+  FUserID String? @map("FUserID")
+
+  Invoice Invoice[]
+}
+
+model TransactionV2 {
+  TransactionID   Int      @id @default(autoincrement())
+  RefNo           String
+  Name            String
+  Email           String?
+  PhoneNumber     String?
+  Desc            String
+  Type            String
+  Method          String
+  UniqueKey       String
+  InvoiceNo       String
+  Amount          Float
+  Status          String
+  CreatedDateTime DateTime @default(now())
+  PaymentLink     String
+  StudentID       String?
+  AGInvoiceNo     String?  @unique
+
+  Students Students? @relation(fields: [StudentID], references: [StudentID])
+
+  Users   Users?  @relation(fields: [FUserID], references: [UserID])
+  FUserID String? @map("FUserID")
+
+  Invoice    Invoice[]
+  SubInvoice SubInvoice[]
 }

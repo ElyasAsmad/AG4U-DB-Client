@@ -172,11 +172,16 @@ const updateDB = async (branchID?: string, classes?: string[]) => {
 };
 
 if (ans.isTeacher) {
+
+    const spinnerBranch = ora('Getting branches...').start()
+
     const branches = await prisma.branch.findMany({
         include: {
             AGClasses: true,
         },
     });
+
+    spinnerBranch.stop()
 
     const branchAnswer = await autocomplete({
         message: "Select teacher's branch(s): ",
