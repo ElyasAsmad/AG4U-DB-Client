@@ -1,8 +1,6 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearchPostgres"]
 }
 
 datasource db {
@@ -20,108 +18,141 @@ model Category {
   CategoryID   String        @id @default(uuid())
   CategoryName String
   OrgID        Int
-  Organization Organization  @relation(fields: [OrgID], references: [OrgID])
   Branch       Branch[]
-  Subcategory  Subcategory[]
-
-  Users Users[] @relation("AGStaffCategory")
+  Organization Organization  @relation(fields: [OrgID], references: [OrgID])
+  Users        Users[]       @relation("AGStaffCategory")
+  Subcategory  Subcategory[] @relation("CategoryToSubcategory")
 }
 
 model Subcategory {
   SubcategoryID   String           @id @default(uuid())
   SubcategoryName String
-  Category        Category[]
-  PortfolioAlbum  PortfolioAlbum[]
   AGClasses       AGClasses[]
+  PortfolioAlbum  PortfolioAlbum[]
+  Category        Category[]       @relation("CategoryToSubcategory")
 }
 
 model Branch {
   BranchID             String                 @id @default(uuid())
   BranchName           String
-  // Location  String
   CategoryID           String
-  Category             Category               @relation(fields: [CategoryID], references: [CategoryID])
-  AGClasses            AGClasses[]
-  // Fees       BranchPricing[]
-  Address              Address?               @relation(fields: [FAddressID], references: [AddressID])
   FAddressID           String?                @unique
+  AGClasses            AGClasses[]
+  Category             Category               @relation(fields: [CategoryID], references: [CategoryID])
+  Address              Address?               @relation(fields: [FAddressID], references: [AddressID])
   BranchManagerCheckIn BranchManagerCheckIn[]
   Users                Users[]
+  BranchEvents         EventsRSVP[]           @relation("InvitedBranches")
+
+  @@index([BranchID], type: Hash)
 }
 
 model Address {
   AddressID String  @id @default(uuid())
   Address1  String
   Address2  String
-  PostCode  String
   City      String
   State     String
+  PostCode  String
   Branch    Branch?
 }
 
 model AGClasses {
-  ClassID    String     @id @default(uuid())
-  ClassName  String
-  ClassTimes Json
-  Students   Students[]
-  Branch     Branch?    @relation(fields: [FBranchID], references: [BranchID])
-  FBranchID  String?
-
-  Portfolio Portfolio[]
-
-  Teachers       Users[]
-  Subcategory    Subcategory?    @relation(fields: [FSubcategoryID], references: [SubcategoryID])
+  ClassID        String          @id @default(uuid())
+  ClassName      String
+  FBranchID      String?
+  ClassTimes     Json
   FSubcategoryID String?         @map("fSubcategoryID")
+  Branch         Branch?         @relation(fields: [FBranchID], references: [BranchID])
+  Subcategory    Subcategory?    @relation(fields: [FSubcategoryID], references: [SubcategoryID])
   BranchPricing  BranchPricing[]
+  AGFiles        AGFile[]        @relation("AGClassesToAGFiles")
+  AGFolders      AGFolder[]      @relation("AGClassesToAGFolders")
+  Portfolio      Portfolio[]     @relation("AGClassesToPortfolio")
+  Students       Students[]      @relation("AGClassesToStudents")
+  Teachers       Users[]         @relation("AGClassesToUsers")
+
+  Announcement           Announcement[]
+  EventsRSVPParticipants EventsRSVPParticipants[]
+
+  @@index([FBranchID], name: "FBranchIDIndex")
+  @@index([ClassID], type: Hash)
 }
 
 model Roles {
   RoleID   String  @id @default(uuid())
   RoleName String
   Status   String
-  Users    Users[]
+  Users    Users[] @relation("RolesToUsers")
+
+  AccessibleFiles   AGFile[]   @relation("FileAccessRoles")
+  AccessibleFolders AGFolder[] @relation("FolderAccessRoles")
+
+  Announcement Announcement[]
+  EventsRSVP   EventsRSVP[]   @relation("InvitedRoles")
+
+  @@index([RoleName])
 }
 
 model Users {
-  UserID         String    @id @unique
-  FullName       String
-  MobileNumber   String    @unique
-  EmailAddress   String
-  Role           Roles[]
-  ICNo           String
-  StaffCategory  String?
-  Gender         String
-  DOB            DateTime
-  Address1       String
-  Address2       String?
-  ProfilePicture AGMedia?  @relation("ProfilePicture")
-  City           String
-  ZipCode        String
-  State          String
-  IsMigrated     Boolean   @default(false)
-  S_StartDate    DateTime?
-  S_EndDate      DateTime?
-  CreatedAt      DateTime  @default(now())
-  OldStatus      String?
-  Status         String
-  VehicleInfo    String
-
-  Branch               Branch?                @relation(fields: [branchBranchID], references: [BranchID])
-  AGStaffCategory      Category[]             @relation("AGStaffCategory")
-  AGClasses            AGClasses[]
-  Transactions         Transaction[]
-  Conversations        Conversations[]
-  Messages             Messages[]
-  Children             Students[]
-  UsersAuth            UsersAuth?
-  Token                Token[]
-  DailyLogs            DailyLogs[]
-  AGMedia              AGMedia[]              @relation("UploadedBy")
-  TPortfolio           Portfolio[]
-  BranchManagerCheckIn BranchManagerCheckIn[]
+  UserID               String                 @id @unique
+  FullName             String
+  MobileNumber         String                 @unique
+  EmailAddress         String
+  ICNo                 String
+  StaffCategory        String?
+  Gender               String
+  DOB                  DateTime
+  Address1             String
+  Address2             String?
+  City                 String
+  ZipCode              String
+  State                String
+  S_StartDate          DateTime?
+  S_EndDate            DateTime?
+  CreatedAt            DateTime               @default(now())
+  Status               String
+  IsMigrated           Boolean                @default(false)
+  VehicleInfo          String
+  OldStatus            String?
   branchBranchID       String?
-  Invoice              Invoice[]
-  TransactionV2        TransactionV2[]
+  AGMedia              AGMedia[]              @relation("UploadedBy")
+  ProfilePicture       AGMedia?               @relation("ProfilePicture")
+  Announcement         Announcement[]
+  BranchManagerCheckIn BranchManagerCheckIn[]
+
+  AGFiles   AGFile[]
+  AGFolders AGFolder[]
+
+  DailyLogs          DailyLogs[]
+  Messages           Messages[]
+  OTPCodes           OTPCode[]
+  TPortfolio         Portfolio[]
+  Sessions           Session[]
+  Token              Token[]
+  Transactions       Transaction[]
+  TransactionV2      TransactionV2[]
+  Branch             Branch?                  @relation(fields: [branchBranchID], references: [BranchID])
+  UsersAuth          UsersAuth?
+  AGClasses          AGClasses[]              @relation("AGClassesToUsers")
+  AGStaffCategory    Category[]               @relation("AGStaffCategory")
+  Conversations      Conversations[]          @relation("ConversationsToUsers")
+  Invoice            Invoice[]                @relation("InvoiceToUsers")
+  Role               Roles[]                  @relation("RolesToUsers")
+  Children           Students[]               @relation("StudentsToUsers")
+  InvitedEvents      EventsRSVP[]             @relation("InvitedUsers")
+  CreatedEvents      EventsRSVP[]
+  EventsParticipated EventsRSVPParticipants[]
+
+  AppAnalytics         AppAnalytics[]
+  PasswordResetRequest PasswordResetRequest[]
+  ModuleInteractions  ModuleInteractions[]
+
+  Bills UserBills[]
+
+  @@index([UserID], type: Hash)
+  @@index([MobileNumber], type: Hash)
+  @@index([EmailAddress])
 }
 
 model BranchManagerCheckIn {
@@ -129,43 +160,41 @@ model BranchManagerCheckIn {
   CheckInAt  DateTime  @default(now())
   CheckOutAt DateTime?
   FUserID    String
-  Users      Users     @relation(fields: [FUserID], references: [UserID])
   FBranchID  String
   Branch     Branch    @relation(fields: [FBranchID], references: [BranchID])
+  Users      Users     @relation(fields: [FUserID], references: [UserID])
 }
 
 model Students {
-  StudentID        String   @id @default(uuid())
+  StudentID        String          @id @default(uuid())
   FullName         String
-  StudentIC        String
-  StudentCategory  String
-  Gender           String
-  Address          String
   DOB              DateTime
   EffectiveDate    DateTime
   ExpiryDate       DateTime
-  PictureURL       AGMedia?
-  Citizenship      String
-  Immunization     String
+  Gender           String
+  StudentCategory  String
+  StudentIC        String
   Allergy          String
-  PickupPerson     String
+  Citizenship      String
   EmergencyContact String
-  Status           String
-  UpdatedAt        DateTime @default(now())
+  Immunization     String
+  PickupPerson     String
+  Status           String          @default("Registered")
+  UpdatedAt        DateTime        @default(now())
+  Address          String
+  PictureURL       AGMedia?
+  SubInvoice       SubInvoice[]
+  Transactions     Transaction[]
+  TransactionV2    TransactionV2[]
+  AGClasses        AGClasses[]     @relation("AGClassesToStudents")
+  DailyLogs        DailyLogs[]     @relation("DailyLogsToStudents")
+  Portfolio        Portfolio[]     @relation("PortfolioToStudents")
+  Parents          Users[]         @relation("StudentsToUsers")
+  TaggedInImages   AGMedia[]       @relation("TaggedInImages")
 
-  // FOREIGN KEYS
-  Parents   Users[]
-  AGClasses AGClasses[]
-  // Invoice   Invoice[]
+  StuParticipatedEvents EventsRSVPParticipants[]
 
-  DailyLogs DailyLogs[]
-  Portfolio Portfolio[]
-
-  Transactions Transaction[]
-
-  TaggedInImages AGMedia[]       @relation(name: "TaggedInImages")
-  SubInvoice     SubInvoice[]
-  TransactionV2  TransactionV2[]
+  @@index([StudentID], type: Hash)
 }
 
 model UsersAuth {
@@ -180,27 +209,30 @@ model Token {
   TokenID   String   @id @default(uuid())
   UserID    String
   Token     String
-  Type      String // refresh / access / reset / migration
   ExpiresAt DateTime
   IssuedAt  DateTime @default(now())
-  User      Users?   @relation(fields: [UserID], references: [UserID])
+  Type      String
+  User      Users    @relation(fields: [UserID], references: [UserID])
+
+  @@index([IssuedAt], type: Brin)
 }
 
 model DailyLogs {
-  DLID        String    @id @default(uuid())
-  Temperature Float?
-  Timestamp   DateTime  @default(now())
-  Medias      AGMedia[]
-
-  TimePosted DateTime? @default(now())
-
+  DLID          String        @id @default(uuid())
+  Timestamp     DateTime      @default(now()) @db.Timestamptz(3)
   FDLTypeID     String        @unique
+  FUserID       String
+  Temperature   Float?
+  FStudentID    String?
+  TimePosted    DateTime?     @default(now()) @db.Timestamptz(3)
+  Medias        AGMedia[]
   DailyLogsType DailyLogsType @relation(fields: [FDLTypeID], references: [DLTypeID])
+  UploadedBy    Users         @relation(fields: [FUserID], references: [UserID])
+  Students      Students[]    @relation("DailyLogsToStudents")
 
-  FUserID    String
-  UploadedBy Users      @relation(fields: [FUserID], references: [UserID])
-  Students   Students[]
-  FStudentID String?
+  @@index([DLID], type: Hash)
+  @@index([Timestamp], type: Brin)
+  @@index([Timestamp, DLID], type: BTree) // Composite index for efficient sorting and filtering
 }
 
 model DailyLogsType {
@@ -209,83 +241,97 @@ model DailyLogsType {
   Description String
   Content     Json
   DailyLogs   DailyLogs?
+
+  @@index([Type])
 }
 
 model AGMedia {
-  MediaID           String          @id @default(uuid())
-  MediaType         String // images / videos
-  MediaURL          String
-  MediaKey          String
-  UploadedAt        DateTime        @default(now())
-  PortfolioAlbum    PortfolioAlbum?
-  FPortfolioAlbumID String?
-  Portfolio         Portfolio?      @relation(fields: [FPortfolioAlbumID], references: [PortfolioID])
-  MediaDescription  String?
-  MediaState        String          @default("PENDING")
-  TaggedStudents    Students[]      @relation(name: "TaggedInImages")
+  MediaID                    String          @id @default(uuid())
+  MediaType                  String
+  MediaURL                   String
+  UploadedAt                 DateTime        @default(now())
+  FPortfolioAlbumID          String?
+  MediaKey                   String
+  MediaSize                  Int?
+  Hash                       String?
+  FUserID                    String
+  FDLID                      String?         @map("dailyLogsDLID")
+  FUserProfilePicID          String?         @unique
+  MediaDescription           String?
+  FStudentID                 String?         @unique
+  MediaState                 String          @default("PENDING")
 
-  FUserID    String
-  UploadedBy Users  @relation(fields: [FUserID], references: [UserID], name: "UploadedBy")
+  BlurHash                   String?
+  announcementAnnouncementID String?
+  Portfolio                  Portfolio?      @relation(fields: [FPortfolioAlbumID], references: [PortfolioID])
+  Student                    Students?       @relation(fields: [FStudentID], references: [StudentID])
+  UploadedBy                 Users           @relation("UploadedBy", fields: [FUserID], references: [UserID])
+  ProfilePicture             Users?          @relation("ProfilePicture", fields: [FUserProfilePicID], references: [UserID])
+  Announcement               Announcement?   @relation(fields: [announcementAnnouncementID], references: [AnnouncementID])
+  DailyLogs                  DailyLogs?      @relation(fields: [FDLID], references: [DLID])
+  PortfolioAlbum             PortfolioAlbum?
+  TaggedStudents             Students[]      @relation("TaggedInImages")
 
-  FUserProfilePicID String? @unique
-  ProfilePicture    Users?  @relation(fields: [FUserProfilePicID], references: [UserID], name: "ProfilePicture")
+  EventsRSVP EventsRSVP[]
 
-  FDLID     String?    @map("dailyLogsDLID")
-  DailyLogs DailyLogs? @relation(fields: [FDLID], references: [DLID])
-
-  FStudentID String?   @unique
-  Student    Students? @relation(fields: [FStudentID], references: [StudentID])
-
-  BlurHash String?
+  @@index([MediaState], name: "MediaStateIndex")
+  @@index([MediaID], type: Hash)
+  @@index([FDLID, MediaState]) // Composite index for media state filtering
 }
 
 model PortfolioAlbum {
-  AlbumID          String @id @default(uuid())
-  AlbumName        String
-  AlbumDescription String
-
+  AlbumID             String      @id @default(uuid())
+  AlbumName           String
+  AlbumDescription    String
+  AlbumDate           DateTime    @default(now())
   AlbumCoverMediaID   String?     @unique
   FAlbumSubcategoryID String      @map("FAlbumSubcategoryID")
-  AlbumSubcategory    Subcategory @relation(fields: [FAlbumSubcategoryID], references: [SubcategoryID])
-  AlbumCover          AGMedia?    @relation(fields: [AlbumCoverMediaID], references: [MediaID])
-  AlbumDate           DateTime    @default(now())
   Portfolio           Portfolio[]
+  AlbumCover          AGMedia?    @relation(fields: [AlbumCoverMediaID], references: [MediaID])
+  AlbumSubcategory    Subcategory @relation(fields: [FAlbumSubcategoryID], references: [SubcategoryID])
+
+  @@index([AlbumID], type: Hash)
 }
 
 model Portfolio {
   PortfolioID    String          @id @default(uuid())
-  // Media          AGMedia         @relation(fields: [MediaID], references: [MediaID])
-  Medias         AGMedia[]
   Description    String
   Timestamp      DateTime        @default(now())
-  PortfolioAlbum PortfolioAlbum? @relation(fields: [AlbumID], references: [AlbumID])
   AlbumID        String?
-  Teachers       Users?          @relation(fields: [FTeacherID], references: [UserID])
   FTeacherID     String?
-  Students       Students[]
+  FClassID       String?
+  Medias         AGMedia[]
+  PortfolioAlbum PortfolioAlbum? @relation(fields: [AlbumID], references: [AlbumID])
+  Teachers       Users?          @relation(fields: [FTeacherID], references: [UserID])
+  TaggedClasses  AGClasses[]     @relation("AGClassesToPortfolio")
+  Students       Students[]      @relation("PortfolioToStudents")
 
-  TaggedClasses AGClasses[]
-  FClassID      String?
+  @@index([PortfolioID], type: Hash)
 }
 
 model Conversations {
   ConversationID    String     @id @default(uuid())
+  ConversationState String     @default("ACTIVE")
   Messages          Messages[]
-  Users             Users[]
-  ConversationState String     @default("ACTIVE") // ACTIVE / CLOSED
+  Users             Users[]    @relation("ConversationsToUsers")
+
+  @@index([ConversationID], type: Hash)
 }
 
 model Messages {
-  MessageID        String         @id @default(uuid())
-  MessageContent   String // Must be in JSON
-  MessageReference String? // Must be in JSON 
-  MessageState     String         @default("DELIVERED") // DELIVERED / READ / PENDING
-  MessageClientID  String?
-  Timestamp        DateTime       @default(now())
+  MessageID        String        @id @default(uuid())
+  MessageContent   String
+  MessageReference String?
+  Timestamp        DateTime      @default(now())
   FUserID          String
-  Users            Users          @relation(fields: [FUserID], references: [UserID])
   FConversationID  String
-  Conversations    Conversations? @relation(fields: [FConversationID], references: [ConversationID])
+  MessageState     String        @default("DELIVERED")
+  MessageClientID  String?
+  Conversations    Conversations @relation(fields: [FConversationID], references: [ConversationID])
+  Users            Users         @relation(fields: [FUserID], references: [UserID])
+
+  @@index([FConversationID], type: Hash)
+  @@index([Timestamp], type: Brin)
 }
 
 model AccountDeleteRequest {
@@ -298,57 +344,50 @@ model AccountDeleteRequest {
 }
 
 model BranchPricing {
-  PricingID   String   @id @default(uuid())
-  PricingType String // Monthly / Yearly
-  Pricing     Float // Amount
-  Status      String // Active / Inactive
-  CreatedAt   DateTime @default(now())
-  UpdatedAt   DateTime @default(now())
-
-  FClassID  String
-  AGClasses AGClasses @relation(fields: [FClassID], references: [ClassID])
+  PricingID   String    @id @default(uuid())
+  PricingType String
+  Pricing     Float
+  Status      String
+  CreatedAt   DateTime  @default(now())
+  UpdatedAt   DateTime  @default(now())
+  FClassID    String
+  AGClasses   AGClasses @relation(fields: [FClassID], references: [ClassID])
 }
 
 model Invoice {
-  InvoiceID   String       @id @default(uuid())
-  InvoiceNo   String
-  Description String
-  // Amount      Float
-  // Status      String       @default("PENDING") // PENDING / PAID / CANCELLED / REFUNDED / FAILED / EXPIRED / PARTIAL / OVERDUE / REFUND_REQUESTED
-  PaymentType String // Monthly / Yearly
-  IssuedAt    DateTime     @default(now())
-  DueAt       DateTime
-  // PaidAt      DateTime?
-  // RefundedAt  DateTime?
-  Users       Users[]
-  SubInvoice  SubInvoice[]
+  InvoiceID     String          @id @default(uuid())
+  InvoiceNo     String
+  Description   String
+  PaymentType   String
+  IssuedAt      DateTime        @default(now())
+  DueAt         DateTime
+  SubInvoice    SubInvoice[]
+  Transaction   Transaction[]   @relation("InvoiceToTransaction")
+  TransactionV2 TransactionV2[] @relation("InvoiceToTransactionV2")
+  Users         Users[]         @relation("InvoiceToUsers")
 
-  // Students    Students[]
-  Transaction   Transaction[] // 1 Invoice can have multiple transactions (either success / failed)
-  // Students          Students?     @relation(fields: [studentsStudentID], references: [StudentID])
-  // studentsStudentID String?
-  // Students          Students?     @relation(fields: [studentsStudentID], references: [StudentID])
-  // studentsStudentID String?
-  TransactionV2 TransactionV2[]
+  @@index([InvoiceID], type: Hash)
 }
 
 model SubInvoice {
   SubinvoiceID               String         @id @default(uuid())
   Amount                     Float
   Status                     String         @default("PENDING")
-  Student                    Students       @relation(fields: [studentsStudentID], references: [StudentID])
   studentsStudentID          String
-  Invoice                    Invoice?       @relation(fields: [invoiceInvoiceID], references: [InvoiceID])
   invoiceInvoiceID           String?
-  // TransactionV2              TransactionV2? @relation(fields: [transactionV2TransactionID], references: [TransactionID])
-  // transactionV2TransactionID Int
-  TransactionV2              TransactionV2? @relation(fields: [transactionV2TransactionID], references: [TransactionID])
   transactionV2TransactionID Int?
+  Invoice                    Invoice?       @relation(fields: [invoiceInvoiceID], references: [InvoiceID])
+  Student                    Students       @relation(fields: [studentsStudentID], references: [StudentID])
+  TransactionV2              TransactionV2? @relation(fields: [transactionV2TransactionID], references: [TransactionID])
+
+  EventsRSVP EventsRSVP[]
+
+  UserBills UserBills[]
+
+  @@index([SubinvoiceID], type: Hash)
 }
 
 model Transaction {
-  TransactionID   Int      @id @default(autoincrement())
-  RefNo           String
   Name            String
   Email           String
   PhoneNumber     String
@@ -356,24 +395,25 @@ model Transaction {
   Type            String
   Method          String
   UniqueKey       String
+  RefNo           String
   InvoiceNo       String
   Amount          Float
   Status          String
-  CreatedDateTime DateTime @default(now())
+  CreatedDateTime DateTime  @default(now())
   PaymentLink     String
+  FUserID         String?   @map("FUserID")
   StudentID       String?
-  AGInvoiceNo     String?  @unique
+  AGInvoiceNo     String?   @unique
+  TransactionID   Int       @id @default(autoincrement())
+  Users           Users?    @relation(fields: [FUserID], references: [UserID])
+  Students        Students? @relation(fields: [StudentID], references: [StudentID])
+  Invoice         Invoice[] @relation("InvoiceToTransaction")
 
-  Students Students? @relation(fields: [StudentID], references: [StudentID])
-
-  Users   Users?  @relation(fields: [FUserID], references: [UserID])
-  FUserID String? @map("FUserID")
-
-  Invoice Invoice[]
+  @@index([RefNo])
 }
 
 model TransactionV2 {
-  TransactionID   Int      @id @default(autoincrement())
+  TransactionID   Int          @id @default(autoincrement())
   RefNo           String
   Name            String
   Email           String?
@@ -385,16 +425,275 @@ model TransactionV2 {
   InvoiceNo       String
   Amount          Float
   Status          String
-  CreatedDateTime DateTime @default(now())
+  CreatedDateTime DateTime     @default(now())
   PaymentLink     String
   StudentID       String?
-  AGInvoiceNo     String?  @unique
-
-  Students Students? @relation(fields: [StudentID], references: [StudentID])
-
-  Users   Users?  @relation(fields: [FUserID], references: [UserID])
-  FUserID String? @map("FUserID")
-
-  Invoice    Invoice[]
-  SubInvoice SubInvoice[]
+  AGInvoiceNo     String?      @unique
+  FUserID         String?      @map("FUserID")
+  SubInvoice      SubInvoice[]
+  Users           Users?       @relation(fields: [FUserID], references: [UserID])
+  Students        Students?    @relation(fields: [StudentID], references: [StudentID])
+  Invoice         Invoice[]    @relation("InvoiceToTransactionV2")
 }
+
+model Announcement {
+  AnnouncementID String      @id @default(uuid())
+  Title          String
+  Description    String
+  CreatedAt      DateTime    @default(now())
+  UpdatedAt      DateTime    @default(now())
+  Status         String      @default("ACTIVE")
+  TimePosted     DateTime    @default(now())
+  usersUserID    String?
+  Medias         AGMedia[]
+  Classes        AGClasses[]
+  Roles          Roles[]
+  PostedBy       Users?      @relation(fields: [usersUserID], references: [UserID])
+
+  ModuleInteractions ModuleInteractions[]
+
+  @@index([AnnouncementID], type: Hash)
+}
+
+model OTPCode {
+  id          Int      @id @default(autoincrement())
+  OTPCode     String
+  PhoneNumber String
+  UserID      String?
+  CreatedAt   DateTime @default(now())
+  ExpiresAt   DateTime
+  OTPRef      String
+  Users       Users?   @relation(fields: [UserID], references: [UserID])
+}
+
+model Session {
+  id        String   @id
+  userId    String
+  expiresAt DateTime
+  token     String?
+  users     Users    @relation(fields: [userId], references: [UserID], onDelete: Cascade)
+}
+
+model AGFile {
+  FileId   String  @id @default(uuid())
+  FileName String
+  FileURL  String
+  FileType String
+  FileKey  String
+  FileHash String?
+  Size     Int?
+  MimeType String?
+
+  CreatedAt DateTime @default(now())
+  UpdatedAt DateTime @default(now())
+
+  UserID String
+  Owner  Users  @relation(fields: [UserID], references: [UserID])
+
+  FolderId String?
+  Folder   AGFolder? @relation(fields: [FolderId], references: [FolderId])
+
+  Classes AGClasses[] @relation("AGClassesToAGFiles")
+
+  AccessibleByRoles Roles[] @relation("FileAccessRoles")
+
+  @@index([FileId], type: Hash)
+}
+
+model AGFolder {
+  FolderId   String @id @default(uuid())
+  FolderName String
+
+  Files AGFile[]
+
+  ParentFolderId String?
+  ParentFolder   AGFolder?  @relation("SubFolders", fields: [ParentFolderId], references: [FolderId])
+  subFolders     AGFolder[] @relation("SubFolders")
+
+  CreatedAt DateTime @default(now())
+  UpdatedAt DateTime @default(now())
+  Path      String
+
+  UserID String
+  Owner  Users  @relation(fields: [UserID], references: [UserID])
+
+  Classes AGClasses[] @relation("AGClassesToAGFolders")
+
+  AccessibleByRoles Roles[] @relation("FolderAccessRoles")
+  // users Users @relation(references: [UserID], fields: [userId], onDelete: Cascade)
+
+  @@index([FolderId], type: Hash)
+  @@index([ParentFolderId], type: Hash)
+}
+
+model AppAnalytics {
+  id              Int       @id @default(autoincrement())
+  uid             String?
+  version         String
+  buildNumber     String
+  platform        String
+  platformVersion String
+  deviceModel     String?
+  sessionDuration Int?
+  networkType     String?
+  language        String?
+  country         String?
+  lastUpdateDate  DateTime?
+  appLaunchCount  Int?
+  timestamp       DateTime  @default(now())
+
+  Users Users? @relation(fields: [uid], references: [UserID])
+
+  @@map("app_analytics")
+}
+
+model AppVersions {
+  id          Int      @id @default(autoincrement())
+  version     String
+  buildNumber String
+  releasedAt  DateTime @default(now())
+}
+
+model PasswordResetRequest {
+  id        String    @id @default(uuid())
+  userId    String
+  token     String
+  issuedAt  DateTime
+  expiresAt DateTime
+  isUsed    Boolean   @default(false)
+  usedAt    DateTime?
+  ipAddress String?
+  userAgent String?
+
+  users Users @relation(references: [UserID], fields: [userId], onDelete: Cascade)
+
+  @@map("password_reset_requests")
+}
+
+model EventsRSVP {
+  eventId                  String    @id @default(uuid())
+  eventName                String
+  eventDescription         String
+  eventStart               DateTime
+  eventEnd                 DateTime
+  eventLocation            String
+  eventLocationState       String
+  eventLat                 Float?
+  eventLng                 Float?
+  eventFee                 Float?
+  eventMedia               AGMedia[]
+  invitedUsers             Users[]   @relation("InvitedUsers")
+  invitedRoles             Roles[]   @relation("InvitedRoles")
+  invitedBranches          Branch[]  @relation("InvitedBranches")
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @default(now())
+  customNegativeButtonText String?
+  customPositiveButtonText String?
+
+  createdByID String
+  createdBy   Users  @relation(fields: [createdByID], references: [UserID])
+
+  subInvoice SubInvoice[]
+
+  EventsRSVPParticipants EventsRSVPParticipants[]
+}
+
+model EventsRSVPParticipants {
+  id                String     @id @default(uuid())
+  eventId           String
+  userId            String
+  status            String     @default("PENDING") // PENDING, ACCEPTED, REJECTED
+  rejectedReason    String?
+  children          Students[] // which children are attending
+  otherParticipants Json? // other participants
+  createdAt         DateTime   @default(now())
+
+  classID     String?
+  targetClass AGClasses? @relation(fields: [classID], references: [ClassID])
+
+  event EventsRSVP @relation(fields: [eventId], references: [eventId])
+  user  Users      @relation(fields: [userId], references: [UserID])
+}
+
+model UserBills {
+  billId            String   @id
+  collectionId      String   @map("collection_id")
+  paid              Boolean  @default(false)
+  state             String
+  amount            Int
+  paidAmount        Int      @map("paid_amount")
+  dueAt             String
+  email             String
+  mobile            String?
+  name              String
+  url               String
+  paidAt            String?  @map("paid_at")
+  transactionId     String?  @map("transaction_id")
+  transactionStatus String?  @map("transaction_status")
+  xSignature        String?  @map("x_signature")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  ref1Label String? @map("ref1_label")
+  ref1      String?
+  ref2Label String? @map("ref2_label")
+  ref2      String?
+
+  userId String
+  user   Users  @relation(fields: [userId], references: [UserID])
+
+  subInvoice SubInvoice[]
+
+  @@map("user_bills")
+}
+
+model ModuleInteractions {
+  id              Int      @id @default(autoincrement())
+  interactionType String   @map("interaction_type")
+  createdAt          DateTime  @default(now()) @db.Timestamptz(3) @map("created_at")
+  updatedAt          DateTime  @updatedAt @db.Timestamptz(3) @map("updated_at")
+  expiresAt          DateTime? @db.Timestamptz(3) @map("expires_at")
+
+  fAnnouncementID String?       @map("f_announcement_id")
+  Announcement    Announcement? @relation(fields: [fAnnouncementID], references: [AnnouncementID])
+
+  metadata Json?
+
+  userId String? @map("user_id")
+  Users  Users?  @relation(fields: [userId], references: [UserID])
+  @@map("module_analytics")
+
+  // @@unique([id, userId, interactionType])
+  // @@index([fAnnouncementID])
+  // @@index([userId])
+  // @@index([createdAt])
+}
+
+model IotDevices {
+  id          String      @id @default(uuid())
+  deviceName  String
+  deviceType  String // e.g. beacon, camera, etc
+  deviceState String     @default("ACTIVE")
+  macAddress  String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// model PaymentMethodCategory {
+//   id        Int             @id @default(autoincrement())
+//   name      String
+//   iconUrl   String
+//   methods   PaymentMethod[]
+//   createdAt DateTime        @default(now())
+//   updatedAt DateTime        @updatedAt
+// }
+
+// model PaymentMethod {
+//   paymentMethodID Int    @id @default(autoincrement())
+//   name            String
+//   code            String
+//   iconUrl         String
+//   processingFee   Float  @default(0)
+
+//   category PaymentMethodCategory @relation(fields: [paymentMethodID], references: [id])
+// }
